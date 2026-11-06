@@ -222,6 +222,7 @@ tr.total td{font-weight:700}
 const PALETTE=['#f1c04f','#46d995','#5b9bff','#ff7a7a','#c58cff','#ff9f43','#2ed3c6','#ff7ac6','#a8e05f','#9fb3c8','#ffd8a8','#7ee0ff'];
 const EMOJI=['','🦈','🃏','🎩','🐻','🦊','🐺','🐯','🦁','🐸','🐙','🦉','🤠','👑','💀','🍕','🔥','🧊','🐐','🎲','🍀','🚀'];
 const LS_KEY='pokernight.ledger.v1';
+const TOLERANCE=50; // chips a night can be off by and still be waved through
 const $app=document.getElementById('app');
 const S={players:{},nights:{},settings:{},mode:'connecting',canWrite:true,loaded:false,stale:false};
 const ui={view:'tonight',nightId:null,period:'all',guests:false,hl:null,confirm:null,exp:null,start:null,editCfg:false,skipRestore:false};
@@ -300,6 +301,15 @@ function nightCalc(n){
     return{pid,bi,ec,poker,paid:0,share:0,total:0};
   });
   const by=Object.fromEntries(rows.map(r=>[r.pid,r]));
+  const chipsIn=rows.reduce((a,r)=>a+r.bi,0)*chips;
+  const chipsOut=rows.reduce((a,r)=>a+(r.ec||0),0);
+  const allCounted=rows.length>0&&rows.every(r=>r.ec!==null);
+  const diff=chipsOut-chipsIn;
+  const canDisregard=allCounted&&diff!==0&&Math.abs(diff)<=TOLERANCE;
+  const disregarded=canDisregard&&!!n.disregard;
+  // Disregarded gap: spread its money value evenly so results add up to zero again.
+  let gapAg=0;
+  if(disregarded){gapAg=Math.round(diff*buyIn*100/chips);const k=rows.length;const base=Math.floor(gapAg/k);const rem=gapAg-base*k;rows.forEach((r,i)=>{r.poker-=base+(i<rem?1:0)})}
   const exps=Object.entries(n.expenses||{}).filter(([,e])=>e&&!e.deleted).map(([id,e])=>({id,...e})).sort((a,b)=>(a.at||0)-(b.at||0));
   for(const e of exps){
     const amt=Math.round((+e.amount||0)*100);
@@ -308,10 +318,8 @@ function nightCalc(n){
     if(sh.length){const base=Math.floor(amt/sh.length);const rem=amt-base*sh.length;sh.forEach((p,i)=>{by[p].share+=base+(i<rem?1:0)})}
   }
   rows.forEach(r=>r.total=(r.poker||0)+r.paid-r.share);
-  const chipsIn=rows.reduce((a,r)=>a+r.bi,0)*chips;
-  const chipsOut=rows.reduce((a,r)=>a+(r.ec||0),0);
-  const allCounted=rows.length>0&&rows.every(r=>r.ec!==null);
-  return{buyIn,chips,rows,exps,chipsIn,chipsOut,allCounted,diff:chipsOut-chipsIn,
+  return{buyIn,chips,rows,exps,chipsIn,chipsOut,allCounted,diff,canDisregard,disregarded,gapAg,
+    settleable:allCounted&&(diff===0||disregarded),
     transfers:settle(rows.map(r=>({pid:r.pid,bal:r.total}))),
     pot:rows.reduce((a,r)=>a+r.bi,0)*buyIn*100,
     expTotal:exps.reduce((a,e)=>a+Math.round((+e.amount||0)*100),0)};
@@ -443,11 +451,15 @@ function nightView(id){
     </div>${confirmBox('unseat:'+r.pid,`Take ${esc(P(r.pid).name)} off tonight's table?`,'unseat','Remove',`data-pid="${r.pid}"`)?`<div style="padding:8px 16px;border-bottom:1px solid var(--line)">${confirmBox('unseat:'+r.pid,`Take ${esc(P(r.pid).name)} off tonight's table?`,'unseat','Remove',`data-pid="${r.pid}"`)}</div>`:''}`).join('');
 
   const pct=c.chipsIn?Math.min(100,Math.round(c.chipsOut/c.chipsIn*100)):0;
-  const balanced=c.allCounted&&c.diff===0;
+  const balanced=c.settleable;
+  const gapTxt=c.diff>0?`${c.diff} chips too many`:`${-c.diff} chips missing`;
   const countMsg=!c.chipsIn?'No buy-ins yet.':
     !c.allCounted?`${c.rows.filter(r=>r.ec===null).length} stack${c.rows.filter(r=>r.ec===null).length===1?'':'s'} left to count`:
     c.diff===0?'<span class="pos">Chips balance. Ready to settle.</span>':
-    c.diff>0?`<span class="neg">${c.diff} chips too many.</span> Recount someone.`:`<span class="neg">${-c.diff} chips missing.</span> Check under the table.`;
+    c.disregarded?`<span class="pos">${gapTxt}, disregarded.</span> <button class="btn sm ghost" data-act="disregard" data-v="0">Undo</button>`:
+    c.canDisregard?`<span class="neg">${gapTxt}.</span> <button class="btn sm" data-act="disregard" data-v="1">Close enough, disregard</button>`:
+    c.diff>0?`<span class="neg">${gapTxt}.</span> Recount someone.`:`<span class="neg">${gapTxt}.</span> Check under the table.`;
+  const gapNote=c.disregarded?`<p class="small muted" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)">${gapTxt.charAt(0).toUpperCase()+gapTxt.slice(1)} (${money(Math.abs(c.gapAg))}) were disregarded. The difference is split evenly, about ${money(Math.round(Math.abs(c.gapAg)/c.rows.length))} per player, so the transfers add up.</p>`:'';
 
   // expenses
   const ex=ui.exp;const shared=ex.shared||seatedIds;
@@ -491,7 +503,7 @@ function nightView(id){
   <section class="card"><div class="card-h"><h2>Settle up</h2><button class="btn sm" data-act="copy">Copy for WhatsApp</button></div>
     ${breakdown}
     ${!c.allCounted?`<p class="small muted" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)">Enter everyone's end chips to see who pays whom.</p>`:
-      c.diff!==0?`<p class="small" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)"><span class="neg">Chips don't balance (${c.diff>0?'+':''}${c.diff}).</span> Transfers below won't add up until they do.</p>`:''}
+      !c.settleable?`<p class="small" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)"><span class="neg">Chips don't balance (${c.diff>0?'+':''}${c.diff}).</span> Transfers below won't add up until they do.${c.canDisregard?' Off by 50 or less? Tap "Close enough, disregard" above.':''}</p>`:gapNote}
     ${c.allCounted?(xfers||`<p class="small muted" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)">Everyone's square. Nobody owes anything.</p>`):''}
   </section>
 
@@ -626,6 +638,7 @@ function summary(nid){
   L.push('Results:');
   c.rows.slice().sort((a,b)=>(b.poker||0)-(a.poker||0)).forEach(r=>L.push(`${P(r.pid).name}: ${r.poker==null?'not counted':money(r.poker,true)} (${r.bi} buy-in${r.bi===1?'':'s'})`));
   if(c.exps.length){L.push('');L.push('Expenses:');c.exps.forEach(e=>L.push(`${e.desc||'Expense'} ${money(Math.round(+e.amount*100))}, paid by ${P(e.payer).name}, split ${(e.shared||[]).length} ways`))}
+  if(c.disregarded)L.push(`(${c.diff>0?c.diff+' chips too many':-c.diff+' chips missing'} disregarded, split evenly)`);
   L.push('');L.push('Settle up:');
   if(!c.transfers.length)L.push('Nobody owes anything.');
   c.transfers.forEach(t=>L.push(`${P(t.from).name} → ${P(t.to).name}: ${money(t.amt)}${(n.paid||{})[t.from+'_'+t.to]?' ✓':''}`));
@@ -660,7 +673,8 @@ function act(a,d){
     case 'exp-del':if(n)patchNight(nid,{expenses:{[d.id]:{deleted:true}}});return;
     case 'paid':{if(!n)return;const cur=!!(n.paid||{})[d.k];patchNight(nid,{paid:{[d.k]:!cur}});return;}
     case 'copy':if(nid)copyText(summary(nid));return;
-    case 'close':{if(!n)return;const c=nightCalc(n);if(!c.allCounted){toast('Enter end chips for everyone first.');return}if(c.diff!==0){ui.confirm='close';break}patchNight(nid,{status:'settled'});ui.view='night';ui.nightId=nid;setHash('night-'+nid);toast('Night settled. Leaderboard updated.');return;}
+    case 'disregard':if(n)patchNight(nid,{disregard:d.v==='1'});return;
+    case 'close':{if(!n)return;const c=nightCalc(n);if(!c.allCounted){toast('Enter end chips for everyone first.');return}if(!c.settleable){ui.confirm='close';break}patchNight(nid,{status:'settled'});ui.view='night';ui.nightId=nid;setHash('night-'+nid);toast('Night settled. Leaderboard updated.');return;}
     case 'close-force':ui.confirm=null;if(n){patchNight(nid,{status:'settled'});ui.view='night';ui.nightId=nid;setHash('night-'+nid);toast('Night settled.')}return;
     case 'reopen':if(n)patchNight(nid,{status:'live'});return;
     case 'del-ask':ui.confirm='del-night';break;
