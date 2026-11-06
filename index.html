@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07130e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Poker Night Ledger</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23ff6464'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23eef3e9' stroke-width='6' stroke-dasharray='8 6'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23ff6464' stroke='%23eef3e9' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: one-column card-room ledger on dark felt, sticky tab rail, max 880px */
+:root{
+  --bg:#07130e;
+  --felt:#0e2a1e;
+  --surface:#0f2219;
+  --surface-2:#163126;
+  --line:#244636;
+  --ink:#eef3e9;
+  --muted:#8fae9e;
+  --gold:#f1c04f;
+  --gold-ink:#1f1704;
+  --win:#46d995;
+  --loss:#ff6464;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"DM Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  background:radial-gradient(130% 60% at 50% -8%, #17452f 0%, rgba(7,19,14,0) 62%) no-repeat, var(--bg);
+  color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;min-height:100vh;
+  font-variant-numeric:tabular-nums;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:880px;margin:0 auto;padding-block:0 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:linear-gradient(var(--bg) 78%, rgba(7,19,14,0));padding-block:14px 12px;display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.chiplogo{flex:none;width:40px;height:40px;border-radius:50%;background:var(--loss);position:relative;box-shadow:0 0 0 3px var(--bg),0 0 0 4px var(--line)}
+.chiplogo::before{content:"";position:absolute;inset:3px;border-radius:50%;border:4px dashed var(--ink)}
+.chiplogo::after{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--loss);border:2px solid var(--ink)}
+.brand-t{min-width:0}
+h1{font-family:var(--display);font-weight:900;font-size:30px;line-height:1;letter-spacing:.01em;margin:0;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.next{margin:3px 0 0;color:var(--muted);font-size:13px}
+.next b{color:var(--gold);font-weight:700}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.tab{border:0;background:none;padding:9px 4px;border-radius:10px;color:var(--muted);font-weight:700;font-size:14px}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--gold);color:var(--gold-ink)}
+
+.banner{margin:4px 0 14px;padding:10px 14px;border-radius:12px;border:1px dashed var(--line);color:var(--muted);font-size:13.5px}
+.banner b{color:var(--ink)}
+
+/* type */
+h2{font-family:var(--display);font-weight:800;font-size:22px;text-transform:uppercase;letter-spacing:.03em;margin:0;text-wrap:balance}
+h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:700}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.card-h{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card-b{padding:0 16px 16px}
+.felt{background:radial-gradient(100% 120% at 0% 0%, #1b4a35 0%, var(--felt) 55%);border-color:#2c5a45}
+
+/* controls */
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--gold);color:var(--gold-ink);transition:transform .12s, filter .12s}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--muted)}
+.btn.danger{background:transparent;color:var(--loss);border:1px solid color-mix(in srgb,var(--loss) 45%,transparent)}
+.btn.big{padding:14px 20px;font-size:16px;width:100%}
+.btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.x{border:0;background:none;color:var(--muted);width:30px;height:30px;border-radius:8px;font-size:18px;line-height:1}
+.x:hover{background:var(--surface-2);color:var(--loss)}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>span{font-size:12px;color:var(--muted);font-weight:500}
+.in{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+.in:focus{border-color:var(--gold);outline:none}
+select.in{appearance:auto}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+
+/* avatars & pills */
+.av{--c:var(--gold);flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);border:2px dashed var(--c);font-weight:700;font-size:12.5px;color:var(--c);line-height:1}
+.av.emo{font-size:16px}
+.av.lg{width:54px;height:54px;font-size:20px;border-width:3px}
+.av.lg.emo{font-size:26px}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.who .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tag{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);flex:none}
+.tag.live{border-color:var(--win);color:var(--win)}
+.tag.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--win);margin-right:5px;vertical-align:1px}
+.tag.done{border-color:var(--gold);color:var(--gold)}
+.pos{color:var(--win)}
+.neg{color:var(--loss)}
+.net{font-family:var(--display);font-weight:800;font-size:20px;text-align:right;white-space:nowrap}
+
+/* seat toggles */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.pchip{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:99px;border:1.5px solid var(--line);background:var(--bg);font-weight:600;max-width:100%}
+.pchip .av{width:26px;height:26px;font-size:11px}
+.pchip .av.emo{font-size:14px}
+.pchip span.nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pchip.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--bg))}
+.pchip:hover{border-color:var(--muted)}
+.pchip.add{padding:5px 12px;color:var(--muted);border-style:dashed}
+
+/* seats */
+.seats{border-top:1px solid var(--line)}
+.seat{display:grid;grid-template-columns:minmax(0,1fr) auto 104px 92px 30px;grid-template-areas:"who step chips net x";align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.seat .who{grid-area:who}.seat .stepper{grid-area:step}.seat .ecw{grid-area:chips}.seat .net{grid-area:net}.seat .x{grid-area:x}
+.seat-h{padding:8px 16px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.stepper{display:flex;align-items:center;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:3px}
+.stepper button{width:32px;height:32px;border:0;border-radius:9px;background:var(--surface-2);font-size:18px;font-weight:700}
+.stepper button:hover{background:var(--gold);color:var(--gold-ink)}
+.stepper .ct{min-width:58px;text-align:center;font-size:12px;color:var(--muted);line-height:1.1}
+.stepper .ct b{display:block;font-family:var(--display);font-size:20px;color:var(--ink)}
+.ecw{position:relative}
+.ecw .in{text-align:right;padding-right:44px;font-weight:700}
+.ecw small{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none}
+@media (max-width:600px){
+  .seat{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"who who x" "step chips net";row-gap:8px;padding:12px 14px}
+  .seat .net{font-size:18px;min-width:70px}
+  .seat-h{display:none}
+}
+
+/* chip count bar */
+.count{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.bar{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--muted);border-radius:99px;transition:width .3s}
+.bar.ok i{background:var(--win)}
+.bar.bad i{background:var(--loss)}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line);min-width:0}
+.li .grow{flex:1;min-width:0}
+.li .ttl{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .sub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.li.click{cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+.li.click:hover{background:var(--surface-2)}
+.amt{font-family:var(--display);font-weight:800;font-size:19px;white-space:nowrap}
+.xfer{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.xfer .arrow{color:var(--muted);font-size:13px}
+.xfer.paid{opacity:.5}
+.xfer.paid .amt{text-decoration:line-through}
+.paidbtn{margin-left:auto}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{padding:10px 12px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;border-top:0}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+td.rk{color:var(--muted);font-family:var(--display);font-weight:800;font-size:18px;width:36px}
+tr.total td{font-weight:700}
+
+/* expense form */
+.expform{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
+.expform .r1{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.3fr);gap:10px}
+@media (max-width:560px){.expform .r1{grid-template-columns:1fr 1fr}.expform .r1 .f-desc{grid-column:1/-1}}
+
+/* leaderboard */
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end;padding:18px 14px 0}
+.pod{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0}
+.pod .nm{font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod .block{width:100%;border-radius:12px 12px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:10px;background:var(--surface-2);border:1px solid var(--line);border-bottom:0}
+.pod .place{font-family:var(--display);font-weight:900;font-size:34px;line-height:1;color:var(--muted)}
+.pod.p1 .block{height:120px;background:color-mix(in srgb,var(--gold) 20%,var(--surface-2));border-color:color-mix(in srgb,var(--gold) 50%,var(--line))}
+.pod.p1 .place{color:var(--gold);font-size:44px}
+.pod.p2 .block{height:88px}
+.pod.p3 .block{height:66px}
+.pod .big{font-family:var(--display);font-weight:800;font-size:22px}
+.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.award{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:center;background:var(--surface);min-width:0}
+.award .suit{font-size:26px;line-height:1;width:28px;text-align:center;flex:none}
+.award .suit.r{color:var(--loss)}
+.award .t{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.award .w{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.award>div{min-width:0}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--bg);border:1px solid var(--line)}
+.seg button{border:0;background:none;padding:6px 10px;border-radius:8px;font-size:13px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--surface-2);color:var(--ink)}
+.chart{padding:4px 8px 8px;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:480px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 16px}
+.legend button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:none;border-radius:99px;padding:4px 10px;font-size:12.5px;font-weight:600}
+.legend button i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.legend button.dim{opacity:.4}
+
+.empty{padding:28px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty .suits{font-size:28px;letter-spacing:.3em;color:var(--muted)}
+.empty .suits .r{color:var(--loss)}
+.hero{font-family:var(--display);font-weight:900;font-size:clamp(34px,7vw,52px);line-height:.95;text-transform:uppercase;margin:0}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--loss) 45%,transparent);background:color-mix(in srgb,var(--loss) 10%,transparent);font-size:13.5px}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px;transition:opacity .2s, transform .2s;max-width:calc(100% - 32px);z-index:20}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">Shuffling the deck…</div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+const PALETTE=['#f1c04f','#46d995','#5b9bff','#ff7a7a','#c58cff','#ff9f43','#2ed3c6','#ff7ac6','#a8e05f','#9fb3c8','#ffd8a8','#7ee0ff'];
+const EMOJI=['','🦈','🃏','🎩','🐻','🦊','🐺','🐯','🦁','🐸','🐙','🦉','🤠','👑','💀','🍕','🔥','🧊','🐐','🎲','🍀','🚀'];
+const LS_KEY='pokernight.ledger.v1';
+const $app=document.getElementById('app');
+const S={players:{},nights:{},settings:{},mode:'connecting',canWrite:true,loaded:false,stale:false};
+const ui={view:'tonight',nightId:null,period:'all',guests:false,hl:null,confirm:null,exp:null,start:null,editCfg:false,skipRestore:false};
+let db=null;
+
+/* ---------- helpers ---------- */
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const genId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const parseDate=s=>new Date((s||today())+'T12:00:00');
+const fmtDate=(s,o)=>parseDate(s).toLocaleDateString('en-GB',o||{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+function money(ag,sign){
+  const v=(ag||0)/100, a=Math.abs(v);
+  const str=Number.isInteger(a)?String(a):a.toFixed(2).replace(/0$/,'');
+  const s=v<0?'−':(sign&&v>0?'+':'');
+  return s+'₪'+str;
+}
+const cls=ag=>ag>0?'pos':ag<0?'neg':'';
+function cfg(){const s=S.settings||{};return{name:s.name||'Poker Night',buyIn:+s.buyIn||50,chips:+s.chips||100}}
+function plist(){return Object.entries(S.players).map(([id,p])=>({id,...p})).sort((a,b)=>(a.name||'').localeCompare(b.name||''))}
+function P(pid){return S.players[pid]||{name:'Removed player',color:'#9fb3c8'}}
+function initials(n){const parts=String(n||'?').trim().split(/\s+/);return ((parts[0]||'?')[0]+(parts[1]?parts[1][0]:'')).toUpperCase()}
+function av(pid,lg){const p=P(pid);const e=p.emoji;return `<span class="av ${e?'emo':''} ${lg?'lg':''}" style="--c:${esc(p.color||'#f1c04f')}" aria-hidden="true">${e?esc(e):esc(initials(p.name))}</span>`}
+const nm=pid=>`<span class="nm" dir="auto">${esc(P(pid).name)}</span>`;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2600)}
+function deepMerge(t,s){for(const k in s){const v=s[k];if(v&&typeof v==='object'&&!Array.isArray(v)){if(!t[k]||typeof t[k]!=='object'||Array.isArray(t[k]))t[k]={};deepMerge(t[k],v)}else t[k]=v}return t}
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- storage ---------- */
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(j){S.players=j.players||{};S.nights=j.nights||{};S.settings=j.settings||{}}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify({players:S.players,nights:S.nights,settings:S.settings}))}catch(e){}}
+const queues={};
+function enqueue(path,fn){const p=(queues[path]||Promise.resolve()).then(fn).catch(onWriteErr);queues[path]=p;return p}
+function onWriteErr(e){
+  const code=e&&e.code;
+  if(code==='invalid_argument'){S.canWrite=false;toast("Couldn't save: you have view-only access.")}
+  else if(code==='quota_exceeded')toast('Storage is full. Delete some old nights and try again.');
+  else toast("Couldn't save that change. Check your connection and try again.");
+  render();
+}
+function canW(){if(!S.canWrite){toast('View only. Ask the owner to invite you as an Editor.');return false}return true}
+function apply(col,id,fn){
+  if(col==='settings'){S.settings=fn(S.settings)||{};return}
+  const nx=fn(S[col][id]);
+  if(nx===undefined)delete S[col][id];else S[col][id]=nx;
+}
+function afterLocal(){if(S.mode==='local')saveLocal();render()}
+function setDoc(col,id,data){if(!canW())return;apply(col,id,()=>clone(data));afterLocal();if(db)enqueue(col+'/'+id,()=>db.doc(col+'/'+id).set(data))}
+function patchDoc(col,id,patch){if(!canW())return;apply(col,id,cur=>deepMerge(cur?clone(cur):{},patch));afterLocal();if(db)enqueue(col+'/'+id,()=>db.doc(col+'/'+id).set(patch,{merge:true}))}
+function delDoc(col,id){if(!canW())return;apply(col,id,()=>undefined);afterLocal();if(db)enqueue(col+'/'+id,()=>db.doc(col+'/'+id).delete())}
+const patchNight=(id,p)=>patchDoc('nights',id,p);
+
+function startLocal(){S.mode='local';loadLocal();S.loaded=true;render()}
+async function init(){
+  const conf=window.FIREBASE_CONFIG;
+  if(!conf||!conf.projectId||!window.firebase){startLocal();return}
+  try{firebase.initializeApp(conf);db=firebase.firestore()}catch(e){console.error(e);startLocal();return}
+  S.mode='shared';
+  const got={players:false,nights:false,settings:false};
+  const timer=setTimeout(()=>{S.stale=true;S.loaded=true;render()},10000);
+  const done=(k,meta)=>{if(!meta||!meta.fromCache){got[k]=true;if(got.players&&got.nights&&got.settings){clearTimeout(timer);S.stale=false}}S.loaded=true;render()};
+  const fail=()=>{clearTimeout(timer);S.stale=true;S.loaded=true;render()};
+  db.collection('players').onSnapshot(s=>{S.players=Object.fromEntries(s.docs.map(x=>[x.id,clone(x.data())]));done('players',s.metadata)},fail);
+  db.collection('nights').onSnapshot(s=>{S.nights=Object.fromEntries(s.docs.map(x=>[x.id,clone(x.data())]));done('nights',s.metadata)},fail);
+  db.doc('settings/group').onSnapshot(s=>{S.settings=s.exists?clone(s.data()):{};done('settings',s.metadata)},fail);
+}
+
+/* ---------- math ---------- */
+function nightCalc(n){
+  const buyIn=+n.buyIn||50, chips=+n.chips||100;
+  const seated=Object.entries(n.seats||{}).filter(([,s])=>s&&s.in).sort((a,b)=>(a[1].order||0)-(b[1].order||0));
+  const rows=seated.map(([pid,s])=>{
+    const bi=+s.buyIns||0, has=s.endChips!==null&&s.endChips!==undefined&&s.endChips!=='';
+    const ec=has?+s.endChips:null;
+    const poker=has?Math.round(ec*buyIn*100/chips)-bi*buyIn*100:null;
+    return{pid,bi,ec,poker,paid:0,share:0,total:0};
+  });
+  const by=Object.fromEntries(rows.map(r=>[r.pid,r]));
+  const exps=Object.entries(n.expenses||{}).filter(([,e])=>e&&!e.deleted).map(([id,e])=>({id,...e})).sort((a,b)=>(a.at||0)-(b.at||0));
+  for(const e of exps){
+    const amt=Math.round((+e.amount||0)*100);
+    const sh=(e.shared||[]).filter(p=>by[p]);
+    if(by[e.payer])by[e.payer].paid+=amt;
+    if(sh.length){const base=Math.floor(amt/sh.length);const rem=amt-base*sh.length;sh.forEach((p,i)=>{by[p].share+=base+(i<rem?1:0)})}
+  }
+  rows.forEach(r=>r.total=(r.poker||0)+r.paid-r.share);
+  const chipsIn=rows.reduce((a,r)=>a+r.bi,0)*chips;
+  const chipsOut=rows.reduce((a,r)=>a+(r.ec||0),0);
+  const allCounted=rows.length>0&&rows.every(r=>r.ec!==null);
+  return{buyIn,chips,rows,exps,chipsIn,chipsOut,allCounted,diff:chipsOut-chipsIn,
+    transfers:settle(rows.map(r=>({pid:r.pid,bal:r.total}))),
+    pot:rows.reduce((a,r)=>a+r.bi,0)*buyIn*100,
+    expTotal:exps.reduce((a,e)=>a+Math.round((+e.amount||0)*100),0)};
+}
+/* Fewest transfers: split everyone into the most zero-sum groups possible
+   (a group of k people settles in k-1 transfers), found exactly with a subset DP. */
+function settle(list){
+  const xs=list.filter(x=>x.bal!==0);const k=xs.length;
+  if(k<2)return [];
+  if(k>18)return greedy(xs);
+  const full=(1<<k)-1;const sum=new Float64Array(1<<k);const dp=new Int16Array(1<<k);
+  for(let m=1;m<=full;m++){const low=m&-m;const i=31-Math.clz32(low);sum[m]=sum[m^low]+xs[i].bal;
+    let best=0;for(let r=m;r;r&=r-1){const j=31-Math.clz32(r&-r);const v=dp[m^(1<<j)];if(v>best)best=v}
+    dp[m]=best+(sum[m]===0?1:0)}
+  const groups=[];let cur=[];let m=full;
+  while(m){const z=sum[m]===0?1:0;let pick=-1;
+    for(let r=m;r;r&=r-1){const j=31-Math.clz32(r&-r);if(dp[m^(1<<j)]+z===dp[m]){pick=j;break}}
+    cur.push(xs[pick]);m^=(1<<pick);if(m===0||sum[m]===0){groups.push(cur);cur=[]}}
+  return groups.flatMap(g=>greedy(g));
+}
+function greedy(list){
+  const cr=list.filter(x=>x.bal>0).map(x=>({...x})).sort((a,b)=>b.bal-a.bal);
+  const dr=list.filter(x=>x.bal<0).map(x=>({...x,bal:-x.bal})).sort((a,b)=>b.bal-a.bal);
+  const out=[];let i=0,j=0;
+  while(i<dr.length&&j<cr.length){const amt=Math.min(dr[i].bal,cr[j].bal);if(amt>0)out.push({from:dr[i].pid,to:cr[j].pid,amt});dr[i].bal-=amt;cr[j].bal-=amt;if(dr[i].bal===0)i++;if(cr[j].bal===0)j++}
+  return out;
+}
+function sortedNights(){return Object.entries(S.nights).sort((a,b)=>(b[1].date||'').localeCompare(a[1].date||'')||(b[1].createdAt||0)-(a[1].createdAt||0))}
+function liveNight(){return sortedNights().find(([,n])=>n.status==='live')}
+function playerHistory(pid){let nights=0,net=0;for(const[,n]of Object.entries(S.nights)){const s=n.seats&&n.seats[pid];if(s&&s.in){nights++;if(n.status==='settled'){const r=nightCalc(n).rows.find(r=>r.pid===pid);if(r&&r.poker!=null)net+=r.poker}}}return{nights,net}}
+function everSeated(pid){return Object.values(S.nights).some(n=>n.seats&&n.seats[pid])}
+
+function board(){
+  let nights=Object.entries(S.nights).filter(([,n])=>n.status==='settled').sort((a,b)=>(a[1].date||'').localeCompare(b[1].date||''));
+  if(ui.period==='year'){const y=String(new Date().getFullYear());nights=nights.filter(([,n])=>(n.date||'').startsWith(y))}
+  if(ui.period==='last5')nights=nights.slice(-5);
+  const st={};const ens=pid=>st[pid]||(st[pid]={pid,net:0,nights:0,wins:0,bi:0,best:null,worst:null,spent:0});
+  const series=[];
+  nights.forEach(([id,n])=>{
+    const c=nightCalc(n);let top=null;
+    c.rows.forEach(r=>{const s=ens(r.pid);s.nights++;s.bi+=r.bi;s.spent+=r.paid;
+      if(r.poker!=null){s.net+=r.poker;s.best=s.best==null?r.poker:Math.max(s.best,r.poker);s.worst=s.worst==null?r.poker:Math.min(s.worst,r.poker);if(!top||r.poker>top.poker)top=r}});
+    if(top&&top.poker>0)st[top.pid].wins++;
+    series.push({id,date:n.date,cum:Object.fromEntries(Object.values(st).map(s=>[s.pid,s.net]))});
+  });
+  let list=Object.values(st).filter(s=>S.players[s.pid]);
+  if(!ui.guests)list=list.filter(s=>!S.players[s.pid].guest);
+  list.sort((a,b)=>b.net-a.net||b.wins-a.wins);
+  return{nights,list,series};
+}
+
+/* ---------- views ---------- */
+function curTab(){if(ui.view==='night'){const n=S.nights[ui.nightId];return n&&n.status==='live'?'tonight':'history'}return ui.view}
+function nextLine(){
+  const ln=liveNight();
+  if(ln)return `<b>Game on.</b> Night of ${esc(fmtDate(ln[1].date,{weekday:'long',day:'numeric',month:'short'}))} is live.`;
+  const last=sortedNights()[0];
+  if(!last)return 'Same table, new grudges.';
+  const n=Object.keys(S.nights).length;
+  return `Last game <b>${esc(fmtDate(last[1].date,{weekday:'short',day:'numeric',month:'short'}))}</b> · ${n} night${n===1?'':'s'} played`;
+}
+function header(){
+  const c=cfg();const t=curTab();
+  return `<header class="top"><div class="brand"><span class="chiplogo" aria-hidden="true"></span><div class="brand-t"><h1 dir="auto">${esc(c.name)}</h1><p class="next">${nextLine()}</p></div></div>
+  <nav class="tabs" aria-label="Sections">${[['tonight','Tonight'],['board','Leaders'],['history','History'],['crew','Crew']].map(([k,l])=>`<button class="tab ${t===k?'on':''}" data-act="tab" data-v="${k}" ${t===k?'aria-current="page"':''}>${l}</button>`).join('')}</nav></header>`;
+}
+function banner(){
+  if(S.mode==='local')return `<div class="banner"><b>Not connected to the shared database yet.</b> Anything you enter is saved on this device only.</div>`;
+  if(S.stale)return `<div class="banner"><b>Can't reach the shared ledger right now.</b> What you see may be out of date.</div>`;
+  return '';
+}
+function view(){
+  if(!S.loaded)return header()+`<div class="loading">Shuffling the deck…</div>`;
+  let body='';
+  if(ui.view==='night')body=nightView(ui.nightId);
+  else if(ui.view==='board')body=boardView();
+  else if(ui.view==='history')body=historyView();
+  else if(ui.view==='crew')body=crewView();
+  else{const ln=liveNight();body=ln?nightView(ln[0]):startView()}
+  return header()+banner()+body;
+}
+function confirmBox(key,text,yesAct,yesLabel,data){
+  if(ui.confirm!==key)return '';
+  return `<div class="confirm"><span>${text}</span><button class="btn sm danger" data-act="${yesAct}" ${data||''}>${yesLabel}</button><button class="btn sm ghost" data-act="cancel">Cancel</button></div>`;
+}
+function addPlayerForm(fid,label){
+  return `<form class="row" data-form="${fid}" autocomplete="off"><input class="in" id="${fid}-name" name="name" placeholder="Name" maxlength="40" style="flex:1;min-width:140px" dir="auto"><button class="btn" type="submit">${label}</button></form>`;
+}
+
+function startView(){
+  const players=plist().filter(p=>!p.archived);
+  if(!players.length){
+    return `<section class="card felt"><div class="empty"><div class="suits">♠<span class="r">♥</span>♣<span class="r">♦</span></div><p class="hero">Pull up a chair</p><p class="muted" style="max-width:42ch;margin:0">Add the regulars first. Guests can be added on the night. Everyone with edit access sees the same ledger.</p></div><div class="card-b">${addPlayerForm('first-player','Add player')}</div></section>`;
+  }
+  if(!ui.start)ui.start={date:today(),sel:Object.fromEntries(players.filter(p=>!p.guest).map(p=>[p.id,true]))};
+  const sel=players.filter(p=>ui.start.sel[p.id]);const c=cfg();
+  const chip=p=>`<button class="pchip ${ui.start.sel[p.id]?'on':''}" data-act="start-sel" data-pid="${p.id}" aria-pressed="${!!ui.start.sel[p.id]}">${av(p.id)}<span class="nm" dir="auto">${esc(p.name)}</span>${p.guest?'<span class="tag">guest</span>':''}</button>`;
+  return `<section class="card felt"><div class="card-h"><div><h3>New night</h3><p class="hero" style="margin-top:6px">Shuffle up<br>and deal</p></div></div>
+  <div class="card-b stack">
+    <div class="grid2"><label class="field"><span>Date</span><input class="in" type="date" id="start-date" data-change="start-date" value="${esc(ui.start.date)}"></label>
+    <div class="field"><span>Buy-in</span><div class="in" style="background:none">${money(c.buyIn*100)} for ${c.chips} chips · chip = ${money(c.buyIn*100/c.chips)}</div></div></div>
+    <div class="stack" style="gap:8px"><h3>Who's playing · ${sel.length}</h3><div class="chips">${players.map(chip).join('')}</div></div>
+    <form class="row" data-form="start-guest" autocomplete="off"><input class="in" id="start-guest-name" name="name" placeholder="Bringing a guest? Type their name" maxlength="40" style="flex:1;min-width:160px" dir="auto"><button class="btn ghost" type="submit">Add guest</button></form>
+    <button class="btn big" data-act="start-night" ${sel.length<2?'disabled':''}>Start the night${sel.length?` · ${sel.length} players`:''}</button>
+    ${sel.length<2?'<p class="small muted" style="margin:0;text-align:center">Pick at least two players.</p>':''}
+  </div></section>`;
+}
+
+function nightView(id){
+  const n=S.nights[id];
+  if(!n)return `<section class="card"><div class="empty"><p>That night was deleted.</p><button class="btn ghost" data-act="tab" data-v="history">Back to history</button></div></section>`;
+  const c=nightCalc(n);const live=n.status==='live';
+  if(!ui.exp||ui.exp.nightId!==id)ui.exp={nightId:id,desc:'',amount:'',payer:'',shared:null};
+  const seatedIds=c.rows.map(r=>r.pid);
+  const unseated=plist().filter(p=>!p.archived&&!seatedIds.includes(p.id));
+
+  const cfgBlock=ui.editCfg?`<div class="grid2" style="padding:0 16px 14px">
+      <label class="field"><span>Date</span><input class="in" type="date" id="n-date" data-change="n-date" value="${esc(n.date)}"></label>
+      <label class="field"><span>Buy-in (₪)</span><input class="in" id="n-buyin" inputmode="decimal" data-change="n-buyin" value="${c.buyIn}"></label>
+      <label class="field"><span>Chips per buy-in</span><input class="in" id="n-chips" inputmode="numeric" data-change="n-chips" value="${c.chips}"></label>
+    </div>`:'';
+
+  const seats=c.rows.map(r=>`<div class="seat">
+      <div class="who">${av(r.pid)}${nm(r.pid)}${P(r.pid).guest?'<span class="tag">guest</span>':''}</div>
+      <div class="stepper"><button data-act="bi" data-pid="${r.pid}" data-d="-1" aria-label="Remove a buy-in">−</button><span class="ct"><b>${r.bi}</b>buy-in${r.bi===1?'':'s'}</span><button data-act="bi" data-pid="${r.pid}" data-d="1" aria-label="Add a buy-in">+</button></div>
+      <label class="ecw"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">End chips</span><input class="in" id="ec-${r.pid}" inputmode="numeric" placeholder="—" data-change="ec" data-pid="${r.pid}" value="${r.ec??''}"><small>chips</small></label>
+      <div class="net ${cls(r.poker)}">${r.poker==null?'<span class="muted" style="font-size:14px;font-family:var(--body);font-weight:500">counting…</span>':money(r.poker,true)}</div>
+      <button class="x" data-act="unseat-ask" data-pid="${r.pid}" aria-label="Remove from table">×</button>
+    </div>${confirmBox('unseat:'+r.pid,`Take ${esc(P(r.pid).name)} off tonight's table?`,'unseat','Remove',`data-pid="${r.pid}"`)?`<div style="padding:8px 16px;border-bottom:1px solid var(--line)">${confirmBox('unseat:'+r.pid,`Take ${esc(P(r.pid).name)} off tonight's table?`,'unseat','Remove',`data-pid="${r.pid}"`)}</div>`:''}`).join('');
+
+  const pct=c.chipsIn?Math.min(100,Math.round(c.chipsOut/c.chipsIn*100)):0;
+  const balanced=c.allCounted&&c.diff===0;
+  const countMsg=!c.chipsIn?'No buy-ins yet.':
+    !c.allCounted?`${c.rows.filter(r=>r.ec===null).length} stack${c.rows.filter(r=>r.ec===null).length===1?'':'s'} left to count`:
+    c.diff===0?'<span class="pos">Chips balance. Ready to settle.</span>':
+    c.diff>0?`<span class="neg">${c.diff} chips too many.</span> Recount someone.`:`<span class="neg">${-c.diff} chips missing.</span> Check under the table.`;
+
+  // expenses
+  const ex=ui.exp;const shared=ex.shared||seatedIds;
+  if(!ex.payer||!seatedIds.includes(ex.payer))ex.payer=seatedIds[0]||'';
+  const expList=c.exps.map(e=>{const sh=(e.shared||[]).filter(p=>seatedIds.includes(p));
+    return `<div class="li"><div class="grow"><div class="ttl" dir="auto">${esc(e.desc||'Expense')}</div><div class="sub">${esc(P(e.payer).name)} paid · split ${sh.length===seatedIds.length?'by everyone':sh.length+' ways: '+esc(sh.map(p=>P(p).name).join(', '))}</div></div><div class="amt">${money(Math.round((+e.amount||0)*100))}</div><button class="x" data-act="exp-del" data-id="${e.id}" aria-label="Delete expense">×</button></div>`}).join('');
+  const expForm=seatedIds.length?`<form class="expform" data-form="exp" autocomplete="off">
+    <div class="r1">
+      <label class="field f-desc"><span>What</span><input class="in" id="exp-desc" data-input="exp-desc" placeholder="Pizza, beer, snacks…" value="${esc(ex.desc)}" maxlength="60" dir="auto"></label>
+      <label class="field"><span>Amount (₪)</span><input class="in" id="exp-amt" data-input="exp-amt" inputmode="decimal" placeholder="0" value="${esc(ex.amount)}"></label>
+      <label class="field"><span>Paid by</span><select class="in" id="exp-payer" data-change="exp-payer">${seatedIds.map(p=>`<option value="${p}" ${p===ex.payer?'selected':''}>${esc(P(p).name)}</option>`).join('')}</select></label>
+    </div>
+    <div class="spread"><span class="small muted">Who shares it · ${shared.length} of ${seatedIds.length}${shared.length&&+ex.amount>0?` · ${money(Math.round(+ex.amount*100/shared.length))} each`:''}</span><span class="row"><button type="button" class="btn sm ghost" data-act="exp-all">Everyone</button><button type="button" class="btn sm ghost" data-act="exp-none">Nobody</button></span></div>
+    <div class="chips">${seatedIds.map(p=>`<button type="button" class="pchip ${shared.includes(p)?'on':''}" data-act="exp-share" data-pid="${p}" aria-pressed="${shared.includes(p)}">${av(p)}<span class="nm" dir="auto">${esc(P(p).name)}</span></button>`).join('')}</div>
+    <button class="btn" type="submit">Add expense</button>
+  </form>`:'';
+
+  // settle
+  const paid=n.paid||{};
+  const xfers=c.transfers.map(t=>{const k=t.from+'_'+t.to;const pd=!!paid[k];
+    return `<div class="xfer ${pd?'paid':''}"><span class="who">${av(t.from)}${nm(t.from)}</span><span class="arrow">pays →</span><span class="who">${av(t.to)}${nm(t.to)}</span><span class="amt">${money(t.amt)}</span><button class="btn sm ${pd?'ghost':''} paidbtn" data-act="paid" data-k="${k}" aria-pressed="${pd}">${pd?'Paid ✓':'Mark paid'}</button></div>`}).join('');
+  const breakdown=`<div class="tbl-wrap"><table><thead><tr><th>Player</th><th></th><th>Poker</th><th>Paid</th><th>Share</th><th>Balance</th></tr></thead><tbody>${c.rows.map(r=>`<tr><td><span class="who">${av(r.pid)}${nm(r.pid)}</span></td><td></td><td class="${cls(r.poker)}">${r.poker==null?'—':money(r.poker,true)}</td><td>${r.paid?money(r.paid):'—'}</td><td>${r.share?money(-r.share):'—'}</td><td class="${cls(r.total)}"><b>${money(r.total,true)}</b></td></tr>`).join('')}</tbody></table></div>`;
+
+  return `<div class="stack">
+  <section class="card felt">
+    <div class="card-h"><div><div class="row"><h2>${esc(fmtDate(n.date))}</h2><span class="tag ${live?'live':'done'}">${live?'Live':'Settled'}</span></div>
+      <p class="small muted" style="margin:4px 0 0">${money(c.buyIn*100)} buy-in · ${c.chips} chips · chip = ${money(c.buyIn*100/c.chips)} · pot ${money(c.pot)}</p></div>
+      <button class="btn sm ghost" data-act="cfg">${ui.editCfg?'Done':'Edit night'}</button></div>
+    ${cfgBlock}
+    <div class="seats"><div class="seat seat-h"><span>Player</span><span>Buy-ins</span><span style="text-align:right">End chips</span><span style="text-align:right">Result</span><span></span></div>${seats||'<div class="li muted">Nobody seated yet.</div>'}</div>
+    <div class="count"><div class="spread small"><span>Bank issued <b>${c.chipsIn}</b> · counted <b>${c.chipsOut}</b></span><span>${countMsg}</span></div><div class="bar ${balanced?'ok':c.allCounted?'bad':''}"><i style="width:${pct}%"></i></div></div>
+    <div class="card-b stack" style="gap:10px;padding-top:4px">
+      ${unseated.length?`<div class="chips">${unseated.map(p=>`<button class="pchip add" data-act="seat" data-pid="${p.id}">+ ${esc(p.name)}</button>`).join('')}</div>`:''}
+      <form class="row" data-form="night-guest" autocomplete="off"><input class="in" id="night-guest-name" name="name" placeholder="Seat a guest" maxlength="40" style="flex:1;min-width:150px" dir="auto"><button class="btn ghost" type="submit">Add guest</button></form>
+    </div>
+  </section>
+
+  <section class="card"><div class="card-h"><h2>Side pot: expenses</h2><span class="small muted">${c.exps.length?money(c.expTotal)+' total':'Food, drinks, anything shared'}</span></div>
+    <div class="list">${expList}</div>${expForm}</section>
+
+  <section class="card"><div class="card-h"><h2>Settle up</h2><button class="btn sm" data-act="copy">Copy for WhatsApp</button></div>
+    ${breakdown}
+    ${!c.allCounted?`<p class="small muted" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)">Enter everyone's end chips to see who pays whom.</p>`:
+      c.diff!==0?`<p class="small" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)"><span class="neg">Chips don't balance (${c.diff>0?'+':''}${c.diff}).</span> Transfers below won't add up until they do.</p>`:''}
+    ${c.allCounted?(xfers||`<p class="small muted" style="padding:12px 16px;margin:0;border-top:1px solid var(--line)">Everyone's square. Nobody owes anything.</p>`):''}
+  </section>
+
+  <div class="stack" style="gap:10px">
+    ${live?`<button class="btn big" data-act="close">Close the night</button>`:`<button class="btn big ghost" data-act="reopen">Reopen this night</button>`}
+    ${confirmBox('close',`Chips are off by ${c.diff>0?'+':''}${c.diff}. Close anyway?`,'close-force','Close anyway')}
+    <div class="row" style="justify-content:center"><button class="btn sm danger" data-act="del-ask">Delete night</button></div>
+    ${confirmBox('del-night','Delete this night for everyone? This removes it from the leaderboard.','del-night','Delete')}
+  </div></div>`;
+}
+
+function boardView(){
+  const b=board();
+  const seg=`<div class="row" style="justify-content:space-between"><div class="seg" role="group" aria-label="Period">${[['all','All time'],['year',String(new Date().getFullYear())],['last5','Last 5']].map(([k,l])=>`<button class="${ui.period===k?'on':''}" data-act="period" data-v="${k}">${l}</button>`).join('')}</div>
+    <button class="btn sm ghost" data-act="guests" aria-pressed="${ui.guests}">${ui.guests?'Hide guests':'Show guests'}</button></div>`;
+  if(!b.list.length)return `<div class="stack">${seg}<section class="card"><div class="empty"><div class="suits">♠<span class="r">♥</span>♣<span class="r">♦</span></div><p class="hero" style="font-size:32px">No standings yet</p><p class="muted" style="margin:0;max-width:40ch">Close out a night and the leaderboard fills in here.</p></div></section></div>`;
+  const top=b.list.slice(0,3);
+  const pod=(s,i)=>s?`<div class="pod p${i+1}">${av(s.pid,true)}<span class="nm" dir="auto">${esc(P(s.pid).name)}</span><span class="big ${cls(s.net)}">${money(s.net,true)}</span><div class="block"><span class="place">${i+1}</span></div></div>`:'<div></div>';
+  const rows=b.list.map((s,i)=>`<tr><td class="rk">${i+1}</td><td><span class="who">${av(s.pid)}${nm(s.pid)}${P(s.pid).guest?'<span class="tag">guest</span>':''}</span></td><td class="${cls(s.net)}"><b>${money(s.net,true)}</b></td><td>${s.nights}</td><td>${s.wins}</td><td class="${cls(s.net)}">${money(Math.round(s.net/Math.max(1,s.nights)),true)}</td><td class="pos">${s.best!=null&&s.best>0?money(s.best,true):'—'}</td><td>${s.bi}</td></tr>`).join('');
+  return `<div class="stack">${seg}
+  <section class="card felt"><div class="card-h"><h2>The table, ranked</h2><span class="small muted">${b.nights.length} night${b.nights.length===1?'':'s'} settled</span></div>
+    <div class="podium">${pod(top[1],1)}${pod(top[0],0)}${pod(top[2],2)}</div>
+    <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Player</th><th>Net</th><th>Nights</th><th>Wins</th><th>Avg</th><th>Best</th><th>Buy-ins</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>
+  ${awards(b)}
+  ${chart(b)}
+  </div>`;
+}
+function awards(b){
+  const L=b.list;if(!L.length)return '';
+  const pick=(f,cmp)=>L.reduce((a,s)=>a==null||cmp(f(s),f(a))?s:a,null);
+  const out=[];
+  const shark=pick(s=>s.net,(x,y)=>x>y);if(shark&&shark.net>0)out.push(['♠','','The Shark',shark,money(shark.net,true)+' net']);
+  const atm=pick(s=>s.net,(x,y)=>x<y);if(atm&&atm.net<0)out.push(['♦','r','The ATM',atm,money(atm.net,true)+' net']);
+  const rebuy=pick(s=>s.bi/Math.max(1,s.nights),(x,y)=>x>y);if(rebuy&&rebuy.bi>rebuy.nights)out.push(['♥','r','Rebuy royalty',rebuy,(rebuy.bi/rebuy.nights).toFixed(1)+' buy-ins a night']);
+  const best=pick(s=>s.best??-Infinity,(x,y)=>x>y);if(best&&best.best>0)out.push(['♣','','Biggest night',best,money(best.best,true)+' in one night']);
+  const iron=pick(s=>s.nights,(x,y)=>x>y);if(iron)out.push(['♠','','Iron seat',iron,iron.nights+(iron.nights===1?' night':' nights')+' played']);
+  const snack=pick(s=>s.spent,(x,y)=>x>y);if(snack&&snack.spent>0)out.push(['♥','r','Snack sponsor',snack,money(snack.spent)+' fronted']);
+  return `<section class="stack" style="gap:10px"><h3>Table talk</h3><div class="awards">${out.map(([s,r,t,p,d])=>`<div class="award"><span class="suit ${r}" aria-hidden="true">${s}</span><div><div class="t">${t}</div><div class="w" dir="auto">${esc(P(p.pid).name)}</div><div class="small muted">${d}</div></div></div>`).join('')}</div></section>`;
+}
+function niceStep(r){if(r<=0)return 10;const m=Math.pow(10,Math.floor(Math.log10(r)));for(const k of[1,2,5,10])if(k*m>=r)return k*m;return 10*m}
+function chart(b){
+  const N=b.series.length;const pl=b.list;
+  if(N<2||!pl.length)return '';
+  const W=640,H=250,L=52,R=16,T=14,B=30;
+  const lines=pl.map(s=>({s,arr:[0,...b.series.map(se=>(se.cum[s.pid]||0)/100)]}));
+  let mn=0,mx=0;lines.forEach(l=>l.arr.forEach(v=>{mn=Math.min(mn,v);mx=Math.max(mx,v)}));
+  if(mx===mn){mx+=10;mn-=10}
+  const step=niceStep((mx-mn)/4);mn=Math.floor(mn/step)*step;mx=Math.ceil(mx/step)*step;
+  const x=i=>L+(W-L-R)*i/N, y=v=>T+(H-T-B)*(mx-v)/(mx-mn);
+  let g='';
+  for(let v=mn;v<=mx+1e-9;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v===0?1.5:1}" ${v===0?'':'stroke-dasharray="2 4"'}/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v<0?'−':''}₪${Math.abs(v)}</text>`}
+  const every=Math.max(1,Math.ceil(N/6));
+  b.series.forEach((se,i)=>{const k=i+1;if(k===N||k%every===0||k===1)g+=`<text x="${x(k)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(parseDate(se.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}</text>`});
+  const ls=lines.map(l=>{const p=P(l.s.pid);const dim=ui.hl&&ui.hl!==l.s.pid;const pts=l.arr.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+    return `<g opacity="${dim?.15:1}"><title>${esc(p.name)}: ${money(l.s.net,true)}</title><polyline points="${pts}" fill="none" stroke="${esc(p.color||'#f1c04f')}" stroke-width="${ui.hl===l.s.pid?3.5:2.2}" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(N)}" cy="${y(l.arr[N])}" r="4" fill="${esc(p.color||'#f1c04f')}" stroke="var(--surface)" stroke-width="2"/></g>`}).join('');
+  return `<section class="card"><div class="card-h"><h2>Running totals</h2><span class="small muted">Tap a name to follow it</span></div>
+  <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative net winnings per player over each settled night">${g}${ls}</svg></div>
+  <div class="legend">${pl.map(s=>`<button class="${ui.hl&&ui.hl!==s.pid?'dim':''}" style="--c:${esc(P(s.pid).color||'#f1c04f')}" data-act="hl" data-pid="${s.pid}"><i></i><span dir="auto">${esc(P(s.pid).name)}</span></button>`).join('')}</div></section>`;
+}
+
+function historyView(){
+  const ns=sortedNights();
+  const ln=liveNight();
+  const head=ln?'':`<button class="btn big" data-act="tab" data-v="tonight">Start a new night</button>`;
+  if(!ns.length)return `<div class="stack">${head}<section class="card"><div class="empty"><p class="hero" style="font-size:32px">No nights yet</p><p class="muted" style="margin:0">Every night you play lands here.</p></div></section></div>`;
+  let totPot=0;
+  const items=ns.map(([id,n])=>{const c=nightCalc(n);totPot+=c.pot;
+    const counted=c.rows.filter(r=>r.poker!=null);const w=counted.slice().sort((a,b)=>b.poker-a.poker)[0];const l=counted.slice().sort((a,b)=>a.poker-b.poker)[0];
+    return `<button class="li click" data-act="open" data-id="${id}"><div class="grow"><div class="row" style="gap:8px"><span class="ttl">${esc(fmtDate(n.date))}</span><span class="tag ${n.status==='live'?'live':'done'}">${n.status==='live'?'Live':'Settled'}</span></div>
+      <div class="sub">${c.rows.length} players · pot ${money(c.pot)}${c.exps.length?' · expenses '+money(c.expTotal):''}${w&&w.poker>0?` · top: ${esc(P(w.pid).name)} ${money(w.poker,true)}`:''}${l&&l.poker<0?` · bottom: ${esc(P(l.pid).name)} ${money(l.poker,true)}`:''}</div></div><span class="muted" aria-hidden="true">›</span></button>`}).join('');
+  return `<div class="stack">${head}<section class="card"><div class="card-h"><h2>Every night</h2><span class="small muted">${ns.length} nights · ${money(totPot)} through the bank</span></div><div class="list">${items}</div></section></div>`;
+}
+
+function crewView(){
+  const ps=plist();const c=cfg();
+  const row=p=>{const h=playerHistory(p.id);const used=everSeated(p.id);
+    return `<div class="li" style="flex-wrap:wrap">
+      <label style="display:contents"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Avatar for ${esc(p.name)}</span>
+      <select class="in" id="emo-${p.id}" data-change="p-emoji" data-pid="${p.id}" style="width:64px;padding:6px;text-align:center">${EMOJI.map(e=>`<option value="${e}" ${e===(p.emoji||'')?'selected':''}>${e||initials(p.name)}</option>`).join('')}</select></label>
+      <div class="grow" style="min-width:140px"><input class="in" id="pn-${p.id}" data-change="p-name" data-pid="${p.id}" value="${esc(p.name)}" maxlength="40" dir="auto" style="font-weight:700;background:none;border-color:transparent;padding-left:4px" aria-label="Name">
+        <div class="sub" style="padding-left:4px">${h.nights} night${h.nights===1?'':'s'}${h.nights?` · <span class="${cls(h.net)}">${money(h.net,true)}</span> all time`:''}</div></div>
+      <div class="row">${p.archived?`<button class="btn sm ghost" data-act="p-restore" data-pid="${p.id}">Restore</button>${used?'':`<button class="btn sm danger" data-act="p-del-ask" data-pid="${p.id}">Delete</button>`}`
+        :`<button class="btn sm ghost" data-act="p-guest" data-pid="${p.id}">${p.guest?'Make regular':'Make guest'}</button><button class="btn sm ghost" data-act="p-archive" data-pid="${p.id}">Remove</button>`}</div>
+      ${ui.confirm==='pdel:'+p.id?`<div style="flex-basis:100%">${confirmBox('pdel:'+p.id,`Delete ${esc(p.name)} for good?`,'p-del','Delete',`data-pid="${p.id}"`)}</div>`:''}
+    </div>`};
+  const regs=ps.filter(p=>!p.archived&&!p.guest), guests=ps.filter(p=>!p.archived&&p.guest), gone=ps.filter(p=>p.archived);
+  return `<div class="stack">
+  <section class="card felt"><div class="card-h"><h2>Regulars</h2><span class="small muted">${regs.length}</span></div>
+    <div class="card-b">${addPlayerForm('add-player','Add player')}</div>
+    <div class="list">${regs.map(row).join('')||'<div class="li muted">No regulars yet.</div>'}</div></section>
+  <section class="card"><div class="card-h"><h2>Guests</h2><span class="small muted">Hidden from the leaderboard unless you show them</span></div>
+    <div class="card-b"><form class="row" data-form="add-guest" autocomplete="off"><input class="in" id="add-guest-name" name="name" placeholder="Guest name" maxlength="40" style="flex:1;min-width:140px" dir="auto"><button class="btn ghost" type="submit">Add guest</button></form></div>
+    <div class="list">${guests.map(row).join('')||'<div class="li muted small">No guests yet. You can also add them on the night.</div>'}</div></section>
+  ${gone.length?`<section class="card"><div class="card-h"><h2>Removed</h2><span class="small muted">History is kept. Restore anytime.</span></div><div class="list">${gone.map(row).join('')}</div></section>`:''}
+  <section class="card"><div class="card-h"><h2>House rules</h2><span class="small muted">Defaults for new nights</span></div>
+    <div class="card-b grid2">
+      <label class="field"><span>Group name</span><input class="in" id="set-name" data-change="set-name" value="${esc(c.name)}" maxlength="40" dir="auto"></label>
+      <label class="field"><span>Buy-in (₪)</span><input class="in" id="set-buyin" inputmode="decimal" data-change="set-buyin" value="${c.buyIn}"></label>
+      <label class="field"><span>Chips per buy-in</span><input class="in" id="set-chips" inputmode="numeric" data-change="set-chips" value="${c.chips}"></label>    </div></section>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+let queued=false;
+function render(){if(queued)return;queued=true;Promise.resolve().then(()=>{queued=false;doRender()})}
+function doRender(){
+  const a=document.activeElement;let keep=null;
+  if(a&&a.id&&$app.contains(a)){keep={id:a.id};if(!ui.skipRestore&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type!=='date'))){keep.value=a.value;try{keep.s=a.selectionStart;keep.e=a.selectionEnd}catch(e){}}}
+  $app.innerHTML=view();
+  if(keep){const el=document.getElementById(keep.id);if(el){if(keep.value!==undefined)el.value=keep.value;el.focus({preventScroll:true});try{if(keep.s!=null)el.setSelectionRange(keep.s,keep.e)}catch(e){}}}
+  ui.skipRestore=false;
+}
+
+/* ---------- actions ---------- */
+function curNightId(){if(ui.view==='night')return ui.nightId;const ln=liveNight();return ln?ln[0]:null}
+function createPlayer(name,guest){
+  const id=genId('p');const n=Object.keys(S.players).length;
+  setDoc('players',id,{name,guest:!!guest,archived:false,emoji:'',color:PALETTE[n%PALETTE.length],createdAt:Date.now()});
+  if(ui.start&&!guest)ui.start.sel[id]=true;
+  return id;
+}
+function seat(nid,pid){
+  const n=S.nights[nid];if(!n)return;const s=(n.seats||{})[pid];
+  if(s)patchNight(nid,{seats:{[pid]:{in:true}}});
+  else patchNight(nid,{seats:{[pid]:{in:true,buyIns:1,endChips:null,order:Object.keys(n.seats||{}).length}}});
+}
+function summary(nid){
+  const n=S.nights[nid];const c=nightCalc(n);const L=[];
+  L.push(`♠ ${cfg().name} · ${fmtDate(n.date)}`);
+  L.push(`Buy-in ${money(c.buyIn*100)} (${c.chips} chips) · pot ${money(c.pot)}`);L.push('');
+  L.push('Results:');
+  c.rows.slice().sort((a,b)=>(b.poker||0)-(a.poker||0)).forEach(r=>L.push(`${P(r.pid).name}: ${r.poker==null?'not counted':money(r.poker,true)} (${r.bi} buy-in${r.bi===1?'':'s'})`));
+  if(c.exps.length){L.push('');L.push('Expenses:');c.exps.forEach(e=>L.push(`${e.desc||'Expense'} ${money(Math.round(+e.amount*100))}, paid by ${P(e.payer).name}, split ${(e.shared||[]).length} ways`))}
+  L.push('');L.push('Settle up:');
+  if(!c.transfers.length)L.push('Nobody owes anything.');
+  c.transfers.forEach(t=>L.push(`${P(t.from).name} → ${P(t.to).name}: ${money(t.amt)}${(n.paid||{})[t.from+'_'+t.to]?' ✓':''}`));
+  return L.join('\n');
+}
+async function copyText(txt){
+  try{await navigator.clipboard.writeText(txt);toast('Copied. Paste it in the group chat.')}
+  catch(e){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;left:16px;right:16px;bottom:16px;height:40vh;z-index:30;background:var(--surface);color:var(--ink);border:1px solid var(--gold);border-radius:12px;padding:12px';document.body.appendChild(ta);ta.select();toast('Select all and copy. Tap outside to close.');ta.addEventListener('blur',()=>ta.remove())}
+}
+function setHash(h){try{if(location.hash!=='#'+h)history.replaceState(null,'','#'+h)}catch(e){}}
+
+function act(a,d){
+  const nid=curNightId();const n=nid&&S.nights[nid];
+  switch(a){
+    case 'tab':ui.view=d.v;ui.nightId=null;ui.confirm=null;ui.editCfg=false;setHash(d.v);window.scrollTo(0,0);break;
+    case 'open':ui.view='night';ui.nightId=d.id;ui.confirm=null;ui.editCfg=false;setHash('night-'+d.id);window.scrollTo(0,0);break;
+    case 'cancel':ui.confirm=null;break;
+    case 'start-sel':ui.start.sel[d.pid]=!ui.start.sel[d.pid];break;
+    case 'start-night':{
+      if(!canW())return;const c=cfg();const sel=plist().filter(p=>!p.archived&&ui.start.sel[p.id]);if(sel.length<2)return;
+      const seats={};sel.forEach((p,i)=>seats[p.id]={in:true,buyIns:1,endChips:null,order:i});
+      const id=genId('n');setDoc('nights',id,{date:ui.start.date||today(),buyIn:c.buyIn,chips:c.chips,status:'live',createdAt:Date.now(),seats,expenses:{},paid:{}});
+      ui.start=null;ui.view='tonight';setHash('tonight');toast('Cards are in the air. Good luck.');return;}
+    case 'bi':{if(!n)return;const s=n.seats[d.pid];const v=Math.max(0,(+s.buyIns||0)+(+d.d));if(v!==s.buyIns)patchNight(nid,{seats:{[d.pid]:{buyIns:v}}});return;}
+    case 'unseat-ask':ui.confirm='unseat:'+d.pid;break;
+    case 'unseat':ui.confirm=null;if(n)patchNight(nid,{seats:{[d.pid]:{in:false}}});return;
+    case 'seat':if(n)seat(nid,d.pid);return;
+    case 'cfg':ui.editCfg=!ui.editCfg;break;
+    case 'exp-share':{const ids=nightCalc(n).rows.map(r=>r.pid);let sh=ui.exp.shared||ids.slice();sh=sh.includes(d.pid)?sh.filter(x=>x!==d.pid):[...sh,d.pid];ui.exp.shared=ids.filter(x=>sh.includes(x));break;}
+    case 'exp-all':ui.exp.shared=null;break;
+    case 'exp-none':ui.exp.shared=[];break;
+    case 'exp-del':if(n)patchNight(nid,{expenses:{[d.id]:{deleted:true}}});return;
+    case 'paid':{if(!n)return;const cur=!!(n.paid||{})[d.k];patchNight(nid,{paid:{[d.k]:!cur}});return;}
+    case 'copy':if(nid)copyText(summary(nid));return;
+    case 'close':{if(!n)return;const c=nightCalc(n);if(!c.allCounted){toast('Enter end chips for everyone first.');return}if(c.diff!==0){ui.confirm='close';break}patchNight(nid,{status:'settled'});ui.view='night';ui.nightId=nid;setHash('night-'+nid);toast('Night settled. Leaderboard updated.');return;}
+    case 'close-force':ui.confirm=null;if(n){patchNight(nid,{status:'settled'});ui.view='night';ui.nightId=nid;setHash('night-'+nid);toast('Night settled.')}return;
+    case 'reopen':if(n)patchNight(nid,{status:'live'});return;
+    case 'del-ask':ui.confirm='del-night';break;
+    case 'del-night':ui.confirm=null;if(nid){delDoc('nights',nid);ui.view='history';ui.nightId=null;setHash('history');toast('Night deleted.')}return;
+    case 'p-guest':{const p=S.players[d.pid];patchDoc('players',d.pid,{guest:!p.guest});return;}
+    case 'p-archive':patchDoc('players',d.pid,{archived:true});toast(`${P(d.pid).name} removed. Their history stays.`);return;
+    case 'p-restore':patchDoc('players',d.pid,{archived:false});return;
+    case 'p-del-ask':ui.confirm='pdel:'+d.pid;break;
+    case 'p-del':ui.confirm=null;if(!everSeated(d.pid))delDoc('players',d.pid);return;
+    case 'period':ui.period=d.v;break;
+    case 'guests':ui.guests=!ui.guests;break;
+    case 'hl':ui.hl=ui.hl===d.pid?null:d.pid;break;
+    default:return;
+  }
+  render();
+}
+function num(v){const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:NaN}
+function onChange(k,t){
+  const nid=curNightId();const pid=t.dataset.pid;
+  switch(k){
+    case 'ec':{const raw=t.value.trim();let v=null;if(raw!==''){v=Math.round(num(raw));if(!(v>=0)){toast('End chips must be a number, 0 or more.');render();return}}
+      if(nid&&S.nights[nid].seats[pid].endChips!==v)patchNight(nid,{seats:{[pid]:{endChips:v}}});return;}
+    case 'n-date':if(t.value)patchNight(nid,{date:t.value});return;
+    case 'n-buyin':{const v=num(t.value);if(v>0)patchNight(nid,{buyIn:v});else toast('Buy-in must be more than 0.');return;}
+    case 'n-chips':{const v=Math.round(num(t.value));if(v>0)patchNight(nid,{chips:v});else toast('Chips must be more than 0.');return;}
+    case 'exp-payer':ui.exp.payer=t.value;return;
+    case 'start-date':ui.start.date=t.value;return;
+    case 'p-name':{const v=t.value.trim();if(v)patchDoc('players',pid,{name:v});else{t.value=P(pid).name}return;}
+    case 'p-emoji':patchDoc('players',pid,{emoji:t.value});return;
+    case 'set-name':setDoc('settings','group',{...S.settings,name:t.value.trim()||'Poker Night'});return;
+    case 'set-buyin':{const v=num(t.value);if(v>0)setDoc('settings','group',{...S.settings,buyIn:v});return;}
+    case 'set-chips':{const v=Math.round(num(t.value));if(v>0)setDoc('settings','group',{...S.settings,chips:v});return;}  }
+}
+function onInput(k,t){if(k==='exp-desc')ui.exp.desc=t.value;if(k==='exp-amt'){ui.exp.amount=t.value;}}
+function onSubmit(f,form){
+  const nameIn=form.querySelector('input[name=name]');const name=nameIn?nameIn.value.trim():'';
+  const nid=curNightId();
+  if(['first-player','add-player','add-guest','start-guest','night-guest'].includes(f)){
+    if(!name)return;if(!canW())return;
+    const ex=plist().find(p=>p.name.toLowerCase()===name.toLowerCase());
+    let id;
+    if(ex){id=ex.id;if(ex.archived)patchDoc('players',id,{archived:false});else if(f==='add-player'||f==='add-guest'||f==='first-player'){toast(`${ex.name} is already on the list.`);return}}
+    else id=createPlayer(name,f!=='add-player'&&f!=='first-player');
+    nameIn.value='';ui.skipRestore=true;
+    if(f==='start-guest'&&ui.start){ui.start.sel[id]=true}
+    if(f==='night-guest'&&nid)seat(nid,id);
+    toast(`${name} added.`);render();return;
+  }
+  if(f==='exp'){
+    const ex=ui.exp;const amt=num(ex.amount);const ids=nightCalc(S.nights[nid]).rows.map(r=>r.pid);const sh=ex.shared||ids;
+    if(!(amt>0)){toast('Enter an amount.');return}
+    if(!sh.length){toast('Pick who shares it.');return}
+    if(!canW())return;
+    const eid=genId('e');
+    patchNight(nid,{expenses:{[eid]:{desc:ex.desc.trim()||'Expense',amount:Math.round(amt*100)/100,payer:ex.payer||ids[0],shared:sh.slice(),at:Date.now()}}});
+    ui.exp={nightId:nid,desc:'',amount:'',payer:ex.payer,shared:null};ui.skipRestore=true;
+    if(document.activeElement)document.activeElement.blur();
+    toast('Expense added.');render();
+  }
+}
+
+$app.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!$app.contains(b)||b.disabled)return;act(b.dataset.act,b.dataset)});
+$app.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.change)onChange(t.dataset.change,t)});
+$app.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.input){onInput(t.dataset.input,t);if(t.dataset.input==='exp-amt')render()}});
+$app.addEventListener('submit',e=>{e.preventDefault();onSubmit(e.target.dataset.form,e.target)});
+$app.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.change&&e.target.tagName==='INPUT'&&e.target.type!=='date'){e.preventDefault();e.target.blur()}});
+
+function route(){
+  const h=(location.hash||'').slice(1);
+  if(h.startsWith('night-')){ui.view='night';ui.nightId=h.slice(6)}
+  else if(['tonight','board','history','crew'].includes(h)){ui.view=h;ui.nightId=null}
+  render();
+}
+window.addEventListener('hashchange',route);
+route();
+init();
+})();
+</script>
+</body>
+</html>
